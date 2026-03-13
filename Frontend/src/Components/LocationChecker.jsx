@@ -15,16 +15,28 @@ function CheckIn() {
         if (readings.length === 3) {
           navigator.geolocation.clearWatch(watchId);
 
-          const avgLat =
-            readings.reduce((sum, r) => sum + r.latitude, 0) / 3;
+          // Accuracy-weighted average
+          let totalWeight = 0;
+          let latSum = 0;
+          let lngSum = 0;
+          let accuracySum = 0;
 
-          const avgLng =
-            readings.reduce((sum, r) => sum + r.longitude, 0) / 3;
+          readings.forEach((r) => {
+            const weight = 1 / r.accuracy;
 
-          const avgAccuracy =
-            readings.reduce((sum, r) => sum + r.accuracy, 0) / 3;
+            totalWeight += weight;
+            latSum += r.latitude * weight;
+            lngSum += r.longitude * weight;
+            accuracySum += r.accuracy;
+          });
+
+          const weightedLat = latSum / totalWeight;
+          const weightedLng = lngSum / totalWeight;
+          const avgAccuracy = accuracySum / readings.length;
 
           try {
+            setMessage("Verifying location...");
+
             const response = await fetch(
               "https://worker-checkin.onrender.com/checkin",
               {
@@ -33,8 +45,8 @@ function CheckIn() {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  latitude: avgLat,
-                  longitude: avgLng,
+                  latitude: weightedLat,
+                  longitude: weightedLng,
                   accuracy: avgAccuracy,
                 }),
               }
@@ -42,18 +54,14 @@ function CheckIn() {
 
             const data = await response.json();
 
-            setMessage(
-              `${data.message} | Distance: ${data.distance.toFixed(
-                2
-              )} m`
-            );
+            setMessage(data.message);
           } catch {
-            setMessage("Server error");
+            setMessage("❌ Server error");
           }
         }
       },
       () => {
-        setMessage("Location permission denied");
+        setMessage("❌ Location permission denied");
       },
       {
         enableHighAccuracy: true,

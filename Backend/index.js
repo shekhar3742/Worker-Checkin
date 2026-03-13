@@ -6,14 +6,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Health route (for uptime monitoring)
+app.get("/", (req, res) => {
+  res.send("Worker Check-in Server Running");
+});
+
+// Site location (fixed)
 const SITE_LOCATION = {
   latitude: 28.60137272097046,
   longitude: 77.4294857065379,
 };
- 
-const MAX_RADIUS = 20;
 
-// Haversine Formula
+const MAX_RADIUS = 20; // meters
+
+// Haversine formula to calculate distance
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
 
@@ -33,27 +39,32 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+// Check-in API
 app.post("/checkin", (req, res) => {
   const { latitude, longitude, accuracy } = req.body;
 
+  // Validate request data
   if (
-  latitude === undefined ||
-  longitude === undefined ||
-  accuracy === undefined
-) {
+    latitude === undefined ||
+    longitude === undefined ||
+    accuracy === undefined
+  ) {
     return res.status(400).json({
       success: false,
       message: "Invalid location data",
     });
   }
 
+  // Reject poor GPS accuracy
   if (accuracy > 40) {
     return res.json({
       success: false,
       message: "❌ GPS accuracy too low. Move to open area.",
+      accuracy,
     });
   }
 
+  // Calculate distance
   const distance = getDistance(
     SITE_LOCATION.latitude,
     SITE_LOCATION.longitude,
@@ -61,14 +72,19 @@ app.post("/checkin", (req, res) => {
     longitude
   );
 
+  // Accuracy weighted distance
+  const effectiveDistance = distance - accuracy / 2;
+
   console.log({
     latitude,
     longitude,
     accuracy,
     distance,
+    effectiveDistance,
   });
 
-  if (distance - accuracy <= MAX_RADIUS) {
+  // Geofence check
+  if (effectiveDistance <= MAX_RADIUS) {
     return res.json({
       success: true,
       message: "✅ Check-in allowed",
