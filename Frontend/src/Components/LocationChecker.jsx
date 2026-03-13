@@ -9,11 +9,20 @@ function CheckIn() {
     let readings = [];
 
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        readings.push(pos.coords);
+      async (pos) => {
+        const coords = pos.coords;
+        readings.push(coords);
 
-        if (readings.length >= 3) {
-          finishCollection();
+        // If first reading is very accurate → use immediately
+        if (coords.accuracy <= 20 && readings.length === 1) {
+          finish(coords);
+          return;
+        }
+
+        // Otherwise take max 2 readings
+        if (readings.length >= 2) {
+          const best = readings.sort((a, b) => a.accuracy - b.accuracy)[0];
+          finish(best);
         }
       },
       () => {
@@ -21,44 +30,18 @@ function CheckIn() {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 5000,
+        maximumAge: 1000,
+        timeout: 4000,
       }
     );
 
-    // Force stop after 8 seconds
-    const timeoutId = setTimeout(() => {
-      finishCollection();
-    }, 8000);
-
-    async function finishCollection() {
+    function finish(bestCoords) {
       navigator.geolocation.clearWatch(watchId);
-      clearTimeout(timeoutId);
 
-      if (readings.length === 0) {
-        setMessage("❌ Could not get location");
-        return;
-      }
+      sendToServer(bestCoords);
+    }
 
-      // Accuracy weighted average
-      let totalWeight = 0;
-      let latSum = 0;
-      let lngSum = 0;
-      let accuracySum = 0;
-
-      readings.forEach((r) => {
-        const weight = 1 / r.accuracy;
-
-        totalWeight += weight;
-        latSum += r.latitude * weight;
-        lngSum += r.longitude * weight;
-        accuracySum += r.accuracy;
-      });
-
-      const weightedLat = latSum / totalWeight;
-      const weightedLng = lngSum / totalWeight;
-      const avgAccuracy = accuracySum / readings.length;
-
+    async function sendToServer(coords) {
       try {
         setMessage("Verifying location...");
 
@@ -70,9 +53,9 @@ function CheckIn() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              latitude: weightedLat,
-              longitude: weightedLng,
-              accuracy: avgAccuracy,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              accuracy: coords.accuracy,
             }),
           }
         );
@@ -90,7 +73,9 @@ function CheckIn() {
     <div style={{ padding: "20px" }}>
       <h2>Worker Check-In</h2>
 
-      <button onClick={handleCheckIn}>Check In</button>
+      <button onClick={handleCheckIn}>
+        Check In
+      </button>
 
       <p>{message}</p>
     </div>
