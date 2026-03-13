@@ -47,6 +47,13 @@ app.post("/checkin", (req, res) => {
     });
   }
 
+  if (accuracy > 40) {
+    return res.json({
+      success: false,
+      message: "❌ GPS accuracy too low. Move to open area.",
+    });
+  }
+
   const distance = getDistance(
     SITE_LOCATION.latitude,
     SITE_LOCATION.longitude,
