@@ -3,7 +3,7 @@ import { useState } from "react";
 function CheckIn() {
   const [message, setMessage] = useState("");
 
-  // function to get GPS location
+  // Get location promise
   const getLocation = () => {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
@@ -12,7 +12,7 @@ function CheckIn() {
         {
           enableHighAccuracy: true,
           timeout: 8000,
-          maximumAge: 3000,
+          maximumAge: 2000,
         }
       );
     });
@@ -22,16 +22,17 @@ function CheckIn() {
     try {
       setMessage("Getting location...");
 
-      // first reading
-      let location = await getLocation();
+      // Take 2 readings
+      const loc1 = await getLocation();
+      const loc2 = await getLocation();
 
-      // retry if accuracy is poor
-      if (location.accuracy > 25) {
-        setMessage("Improving location accuracy...");
-        location = await getLocation();
-      }
+      // Select better accuracy
+      const location =
+        loc1.accuracy < loc2.accuracy ? loc1 : loc2;
 
       const { latitude, longitude, accuracy } = location;
+
+      setMessage("Verifying location...");
 
       const response = await fetch(
         "https://worker-checkin.onrender.com/checkin",
@@ -51,8 +52,7 @@ function CheckIn() {
       const data = await response.json();
 
       setMessage(
-        `${data.message}` 
-         
+        `${data.message}`
       );
     } catch (error) {
       if (error.code === 1) {
@@ -60,7 +60,7 @@ function CheckIn() {
       } else if (error.code === 2) {
         setMessage("❌ Location unavailable");
       } else if (error.code === 3) {
-        setMessage("❌ Location request timed out. Try again.");
+        setMessage("❌ Location request timed out");
       } else {
         setMessage("❌ Error getting location");
       }
@@ -71,9 +71,7 @@ function CheckIn() {
     <div style={{ padding: "20px" }}>
       <h2>Worker Check-In</h2>
 
-      <button onClick={handleCheckIn}>
-        Check In
-      </button>
+      <button onClick={handleCheckIn}>Check In</button>
 
       <p>{message}</p>
     </div>
