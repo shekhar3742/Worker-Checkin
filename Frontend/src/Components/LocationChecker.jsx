@@ -34,7 +34,7 @@ function CheckIn() {
       const { latitude, longitude, accuracy } = location;
 
       const response = await fetch(
-        "http://localhost:5000/checkin",
+        "https://worker-checkin.onrender.com/checkin",
         {
           method: "POST",
           headers: {
