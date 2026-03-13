@@ -13,9 +13,10 @@ app.get("/", (req, res) => {
 
 // Site location (fixed)
 const SITE_LOCATION = {
-  latitude: 28.60137272097046,
-  longitude: 77.4294857065379,
+  latitude: 28.601175031191868,
+  longitude: 77.43218881247674,
 };
+
 
 const MAX_RADIUS = 20; // meters
 
