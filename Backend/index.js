@@ -61,7 +61,7 @@ app.post("/checkin", (req, res) => {
     distance,
   });
 
-  if (distance <= MAX_RADIUS + accuracy) {
+  if (distance - accuracy <= MAX_RADIUS) {
     return res.json({
       success: true,
       message: "✅ Check-in allowed",
